@@ -578,7 +578,12 @@ namespace OpenHardwareMonitor.GUI {
       treeView.Invalidate();
       plotPanel.InvalidatePlot();
       systemTray.Redraw();
-      if (gadget != null)
+
+      /*if (runWebServer.Value) {
+        server.sendWS();
+      }*/
+
+        if (gadget != null)
         gadget.Redraw();
 
       if (wmiProvider != null)
