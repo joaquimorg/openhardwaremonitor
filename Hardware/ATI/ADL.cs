@@ -97,6 +97,7 @@ namespace OpenHardwareMonitor.Hardware.ATI {
     public int Step;
   }
 
+
   [StructLayout(LayoutKind.Sequential)]
   internal struct ADLODParameters {
     public int Size;
@@ -141,6 +142,92 @@ namespace OpenHardwareMonitor.Hardware.ATI {
 
     [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
     public string CatalystWebLink;
+  }
+
+
+  /////////////////////////////////////////////////////////////////////////////////////////////
+  ///\brief Structure containing information about Overdrive N capabilities
+  ///
+  /// This structure is used to store information about Overdrive N capabilities
+  /// \nosubgrouping
+  ////////////////////////////////////////////////////////////////////////////////////////////
+  [StructLayout(LayoutKind.Sequential)]
+  internal struct ADLODNParameterRange {
+    /// The starting value of the clock range
+    public int iMode;
+    /// The starting value of the clock range
+    public int iMin;
+    /// The ending value of the clock range
+    public int iMax;
+    /// The minimum increment between clock values
+    public int iStep;
+    /// The default clock values
+    public int iDefault;
+
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////
+  ///\brief Structure containing information about Overdrive N capabilities
+  ///
+  /// This structure is used to store information about Overdrive N capabilities
+  /// \nosubgrouping
+  ////////////////////////////////////////////////////////////////////////////////////////////
+  [StructLayout(LayoutKind.Sequential)]
+  internal struct ADLODNCapabilitiesX2 {
+    /// Number of levels which describe the minimum to maximum clock ranges.
+    /// The 1st level indicates the minimum clocks, and the 2nd level
+    /// indicates the maximum clocks.
+    public int iMaximumNumberOfPerformanceLevels;
+    /// bit vector, which tells what are the features are supported.
+    /// \ref: ADLODNFEATURECONTROL
+    public int iFlags;
+    /// Contains the hard limits of the sclk range.  Overdrive
+    /// clocks cannot be set outside this range.
+    public ADLODNParameterRange sEngineClockRange;
+    /// Contains the hard limits of the mclk range.  Overdrive
+    /// clocks cannot be set outside this range.
+    public ADLODNParameterRange sMemoryClockRange;
+    /// Contains the hard limits of the vddc range.  Overdrive
+    /// clocks cannot be set outside this range.
+    public ADLODNParameterRange svddcRange;
+    /// Contains the hard limits of the power range.  Overdrive
+    /// clocks cannot be set outside this range.
+    public ADLODNParameterRange power;
+    /// Contains the hard limits of the power range.  Overdrive
+    /// clocks cannot be set outside this range.
+    public ADLODNParameterRange powerTuneTemperature;
+    /// Contains the hard limits of the Temperature range.  Overdrive
+    /// clocks cannot be set outside this range.
+    public ADLODNParameterRange fanTemperature;
+    /// Contains the hard limits of the Fan range.  Overdrive
+    /// clocks cannot be set outside this range.
+    public ADLODNParameterRange fanSpeed;
+    /// Contains the hard limits of the Fan range.  Overdrive
+    /// clocks cannot be set outside this range.
+    public ADLODNParameterRange minimumPerformanceClock;
+    /// Contains the hard limits of the throttleNotification
+    public ADLODNParameterRange throttleNotificaion;
+    /// Contains the hard limits of the Auto Systemclock
+    public ADLODNParameterRange autoSystemClock;
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////
+  ///\brief Structure containing information about Overdrive N Fan Speed.
+  ///
+  /// This structure is used to store information about Overdrive Fan control .
+  /// This structure is used by the ADL_OverdriveN_ODPerformanceLevels_Get() and ADL_OverdriveN_ODPerformanceLevels_Set() functions.
+  /// \nosubgrouping
+  ////////////////////////////////////////////////////////////////////////////////////////////
+  [StructLayout(LayoutKind.Sequential)]
+  internal struct ADLODNFanControl {
+    public int iMode;
+    public int iFanControlMode;
+    public int iCurrentFanSpeedMode;
+    public int iCurrentFanSpeed;
+    public int iTargetFanSpeed;
+    public int iTargetTemperature;
+    public int iMinPerformanceClock;
+    public int iMinFanLimit;
   }
 
   internal enum ADLODNCurrentPowerType {
@@ -372,6 +459,12 @@ namespace OpenHardwareMonitor.Hardware.ATI {
     public delegate ADLStatus ADL_Graphics_Versions_GetDelegate(
       out ADLVersionsInfo versionInfo);
 
+    public delegate ADLStatus ADL2_OverdriveN_CapabilitiesX2_GetDelegate(
+      IntPtr context, int adapterIndex, ref ADLODNCapabilitiesX2 overdriveCapabilities);
+
+    public delegate ADLStatus ADL2_OverdriveN_FanControl_GetDelegate(
+      IntPtr context, int adapterIndex, ref ADLODNFanControl odNFanControl);
+
     private static ADL_Main_Control_CreateDelegate
       _ADL_Main_Control_Create;
     private static ADL_Adapter_AdapterInfo_GetDelegate
@@ -417,6 +510,12 @@ namespace OpenHardwareMonitor.Hardware.ATI {
       ADL2_OverdriveN_PerformanceStatus_Get;
     public static ADL_Graphics_Versions_GetDelegate
       ADL_Graphics_Versions_Get;
+
+    public static ADL2_OverdriveN_CapabilitiesX2_GetDelegate
+      ADL2_OverdriveN_CapabilitiesX2_Get;
+
+    public static ADL2_OverdriveN_FanControl_GetDelegate
+      ADL2_OverdriveN_FanControl_Get;
 
     private static string dllName;
 
@@ -480,7 +579,13 @@ namespace OpenHardwareMonitor.Hardware.ATI {
         out ADL2_OverdriveN_PerformanceStatus_Get);
       GetDelegate("ADL_Graphics_Versions_Get",
         out ADL_Graphics_Versions_Get);
-  }
+
+      GetDelegate("ADL2_OverdriveN_CapabilitiesX2_Get",
+        out ADL2_OverdriveN_CapabilitiesX2_Get);
+
+      GetDelegate("ADL2_OverdriveN_FanControl_Get",
+        out ADL2_OverdriveN_FanControl_Get);
+    }
 
     static ADL() {
       CreateDelegates("atiadlxx");

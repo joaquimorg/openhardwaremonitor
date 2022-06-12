@@ -45,6 +45,8 @@ namespace OpenHardwareMonitor.Hardware.ATI {
     private readonly Sensor controlSensor;
     private readonly Control fanControl;
 
+    private ADLODNCapabilitiesX2 overdriveCapabilities;
+
     private IntPtr context;
     private readonly int overdriveVersion;
 
@@ -107,6 +109,13 @@ namespace OpenHardwareMonitor.Hardware.ATI {
 
       this.controlSensor = new Sensor("GPU Fan", 0, SensorType.Control, this, settings);
 
+      // New AMD drivers fix - 22.5.2
+
+      if (ADL.ADL2_OverdriveN_CapabilitiesX2_Get(context, adapterIndex, ref overdriveCapabilities)
+        != ADLStatus.OK) {
+
+      }
+
       ADLFanSpeedInfo afsi = new ADLFanSpeedInfo();
       if (ADL.ADL_Overdrive5_FanSpeedInfo_Get(adapterIndex, 0, ref afsi)
         != ADLStatus.OK) 
@@ -122,6 +131,7 @@ namespace OpenHardwareMonitor.Hardware.ATI {
         SoftwareControlValueChanged;
       ControlModeChanged(fanControl);
       this.controlSensor.Control = fanControl;
+
       Update();                   
     }
 
@@ -508,6 +518,7 @@ namespace OpenHardwareMonitor.Hardware.ATI {
             temperatureCore.Value = null;
           }
         }
+      
 
         if (context != IntPtr.Zero && overdriveVersion >= 6) {
           GetOD6Power(ADLODNCurrentPowerType.TOTAL_POWER, powerTotal);
@@ -574,6 +585,33 @@ namespace OpenHardwareMonitor.Hardware.ATI {
           memoryClock.Value = null;
           coreVoltage.Value = null;
           coreLoad.Value = null;
+        }
+
+        // New AMD drivers fix - 22.5.2
+        if (context != IntPtr.Zero && overdriveVersion == 7) {
+
+          ADLODNFanControl odNFanControl = new ADLODNFanControl();
+          if (ADL.ADL2_OverdriveN_FanControl_Get(context, adapterIndex, ref odNFanControl)
+            == ADLStatus.OK) {
+            fan.Value = odNFanControl.iCurrentFanSpeed;
+            ActivateSensor(fan);
+          } else {
+            fan.Value = null;
+          }
+
+          if ( coreLoad.Value == null ) {
+            if (ADL.ADL2_OverdriveN_PerformanceStatus_Get(context,
+            adapterIndex, out ADLODNPerformanceStatus ps) == ADLStatus.OK) {
+              coreClock.Value = ps.CoreClock * 0.01f;
+              ActivateSensor(coreClock);
+              memoryClock.Value = ps.MemoryClock * 0.01f;
+              ActivateSensor(memoryClock);
+              coreVoltage.Value = ps.VDDC * 0.001f;
+              ActivateSensor(coreVoltage);
+              coreLoad.Value = ps.GPUActivityPercent;
+              ActivateSensor(coreLoad);
+            }
+          }
         }
       }
     }
