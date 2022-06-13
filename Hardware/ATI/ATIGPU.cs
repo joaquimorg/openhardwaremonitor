@@ -111,8 +111,8 @@ namespace OpenHardwareMonitor.Hardware.ATI {
 
       // New AMD drivers fix - 22.5.2
 
-      if (ADL.ADL2_OverdriveN_CapabilitiesX2_Get(context, adapterIndex, ref overdriveCapabilities)
-        != ADLStatus.OK) {
+      if (ADL.ADL2_OverdriveN_CapabilitiesX2_Get(this.context, adapterIndex, ref overdriveCapabilities)
+        == ADLStatus.OK) {
 
       }
 
@@ -176,7 +176,7 @@ namespace OpenHardwareMonitor.Hardware.ATI {
     private void GetODNTemperature(ADLODNTemperatureType type, 
       Sensor sensor) 
     {
-      if (ADL.ADL2_OverdriveN_Temperature_Get(context, adapterIndex,
+      if (ADL.ADL2_OverdriveN_Temperature_Get(this.context, adapterIndex,
         type, out int temperature) == ADLStatus.OK) 
       {
         sensor.Value = 0.001f * temperature;
@@ -188,7 +188,7 @@ namespace OpenHardwareMonitor.Hardware.ATI {
 
     private void GetOD6Power(ADLODNCurrentPowerType type, Sensor sensor) 
     {
-      if (ADL.ADL2_Overdrive6_CurrentPower_Get(context, adapterIndex, type, 
+      if (ADL.ADL2_Overdrive6_CurrentPower_Get(this.context, adapterIndex, type, 
         out int power) == ADLStatus.OK) 
       {
         sensor.Value = power * (1.0f / 0xFF);
@@ -335,7 +335,7 @@ namespace OpenHardwareMonitor.Hardware.ATI {
           for (int i = 0; i < 4; i++) {
             var pt = ((ADLODNCurrentPowerType)i).ToString();
             var status = ADL.ADL2_Overdrive6_CurrentPower_Get(
-              context, adapterIndex, (ADLODNCurrentPowerType)i,
+              this.context, adapterIndex, (ADLODNCurrentPowerType)i,
               out int power);
             if (status == ADLStatus.OK) {
               r.AppendFormat(" Power[{0}].Value: {1}{2}", pt,
@@ -360,7 +360,7 @@ namespace OpenHardwareMonitor.Hardware.ATI {
           for (int i = 1; i < 8; i++) {
             var tt = ((ADLODNTemperatureType)i).ToString();
             var status = ADL.ADL2_OverdriveN_Temperature_Get(
-              context, adapterIndex, (ADLODNTemperatureType)i,
+              this.context, adapterIndex, (ADLODNTemperatureType)i,
               out int temperature);
             if (status == ADLStatus.OK) {
               r.AppendFormat(" Temperature[{0}].Value: {1}{2}", tt,
@@ -382,7 +382,7 @@ namespace OpenHardwareMonitor.Hardware.ATI {
         r.AppendLine("OverdriveN Performance Status");
         r.AppendLine();
         try {          
-          var status = ADL.ADL2_OverdriveN_PerformanceStatus_Get(context, 
+          var status = ADL.ADL2_OverdriveN_PerformanceStatus_Get(this.context, 
             adapterIndex, out var ps);
           r.Append(" Status: ");
           r.AppendLine(status.ToString());
@@ -434,7 +434,7 @@ namespace OpenHardwareMonitor.Hardware.ATI {
         r.AppendLine("Performance Metrics");
         r.AppendLine();
         try {
-          var status = ADL.ADL2_New_QueryPMLogData_Get(context, adapterIndex, 
+          var status = ADL.ADL2_New_QueryPMLogData_Get(this.context, adapterIndex, 
             out var data);
           if (status == ADLStatus.OK) {
             for (int i = 0; i < data.Sensors.Length; i++) {
@@ -472,7 +472,7 @@ namespace OpenHardwareMonitor.Hardware.ATI {
 
     public override void Update() {
       if (context != IntPtr.Zero && overdriveVersion >= 8 && 
-        ADL.ADL2_New_QueryPMLogData_Get(context, adapterIndex, 
+        ADL.ADL2_New_QueryPMLogData_Get(this.context, adapterIndex, 
         out var data) == ADLStatus.OK) 
       {
         GetPMLog(data, ADLSensorType.TEMPERATURE_EDGE, temperatureCore);
@@ -588,30 +588,54 @@ namespace OpenHardwareMonitor.Hardware.ATI {
         }
 
         // New AMD drivers fix - 22.5.2
-        if (context != IntPtr.Zero && overdriveVersion == 7) {
+        if (context != IntPtr.Zero) {
 
-          ADLODNFanControl odNFanControl = new ADLODNFanControl();
-          if (ADL.ADL2_OverdriveN_FanControl_Get(context, adapterIndex, ref odNFanControl)
-            == ADLStatus.OK) {
-            fan.Value = odNFanControl.iCurrentFanSpeed;
-            ActivateSensor(fan);
-          } else {
-            fan.Value = null;
+          if (fan.Value == null) {
+            ADLODNFanControl odNFanControl = new ADLODNFanControl();
+            if (ADL.ADL2_OverdriveN_FanControl_Get(this.context, adapterIndex, ref odNFanControl)
+              == ADLStatus.OK) {
+              fan.Value = odNFanControl.iCurrentFanSpeed;
+              if (fan.Value > overdriveCapabilities.fanSpeed.iMax) {
+                fan.Value = 0;
+              }
+              ActivateSensor(fan);
+
+              int fanMax = overdriveCapabilities.fanSpeed.iMax; // 100%              
+              int fanMin = overdriveCapabilities.fanSpeed.iMin; // 0%
+              int fanSpeed = odNFanControl.iCurrentFanSpeed; // X
+              //float fanPrecent = ((fanSpeed - fanMin) * 100) / (fanMax - fanMin);
+              float fanPrecent = 0;
+              if (fanSpeed > 0) {
+                fanPrecent = (fanSpeed * 100) / fanMax;
+              }
+              //(fanSpeed * 100) / fanMax;
+              controlSensor.Value = fanPrecent;
+              ActivateSensor(controlSensor);
+
+            }
           }
 
-          if ( coreLoad.Value == null ) {
-            if (ADL.ADL2_OverdriveN_PerformanceStatus_Get(context,
-            adapterIndex, out ADLODNPerformanceStatus ps) == ADLStatus.OK) {
+          
+          if (ADL.ADL2_OverdriveN_PerformanceStatus_Get(this.context,
+          adapterIndex, out ADLODNPerformanceStatus ps) == ADLStatus.OK) {
+            if (coreClock.Value == null) {
               coreClock.Value = ps.CoreClock * 0.01f;
               ActivateSensor(coreClock);
+            }
+            if (memoryClock.Value == null) {
               memoryClock.Value = ps.MemoryClock * 0.01f;
               ActivateSensor(memoryClock);
+            }
+            if (coreVoltage.Value == null) {
               coreVoltage.Value = ps.VDDC * 0.001f;
               ActivateSensor(coreVoltage);
+            }
+            if (coreLoad.Value == null) {
               coreLoad.Value = ps.GPUActivityPercent;
               ActivateSensor(coreLoad);
             }
           }
+          
         }
       }
     }
