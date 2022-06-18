@@ -593,16 +593,17 @@ namespace OpenHardwareMonitor.Hardware.ATI {
           if (fan.Value == null) {
             ADLODNFanControl odNFanControl = new ADLODNFanControl();
             if (ADL.ADL2_OverdriveN_FanControl_Get(this.context, adapterIndex, ref odNFanControl)
-              == ADLStatus.OK) {
-              fan.Value = odNFanControl.iCurrentFanSpeed;
-              if (fan.Value > overdriveCapabilities.fanSpeed.iMax) {
+              == ADLStatus.OK) {              
+              if (odNFanControl.iCurrentFanSpeed > overdriveCapabilities.fanSpeed.iMax) {
                 fan.Value = 0;
+              } else {
+                fan.Value = odNFanControl.iCurrentFanSpeed;
               }
               ActivateSensor(fan);
 
               int fanMax = overdriveCapabilities.fanSpeed.iMax; // 100%              
               int fanMin = overdriveCapabilities.fanSpeed.iMin; // 0%
-              int fanSpeed = odNFanControl.iCurrentFanSpeed; // X
+              int fanSpeed = (int)fan.Value; // X
               //float fanPrecent = ((fanSpeed - fanMin) * 100) / (fanMax - fanMin);
               float fanPrecent = 0;
               if (fanSpeed > 0) {
@@ -613,9 +614,10 @@ namespace OpenHardwareMonitor.Hardware.ATI {
               ActivateSensor(controlSensor);
 
             }
+
           }
 
-          
+
           if (ADL.ADL2_OverdriveN_PerformanceStatus_Get(this.context,
           adapterIndex, out ADLODNPerformanceStatus ps) == ADLStatus.OK) {
             if (coreClock.Value == null) {

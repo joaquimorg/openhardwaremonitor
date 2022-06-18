@@ -230,6 +230,22 @@ namespace OpenHardwareMonitor.Hardware.ATI {
     public int iMinFanLimit;
   }
 
+  [StructLayout(LayoutKind.Sequential)]
+  internal struct ADLOD6FanSpeedInfo {
+    /// Contains a bitmap of the valid fan speed type flags.  Possible values: \ref ADL_OD6_FANSPEED_TYPE_PERCENT, \ref ADL_OD6_FANSPEED_TYPE_RPM, \ref ADL_OD6_FANSPEED_USER_DEFINED
+    public int iSpeedType;
+    /// Contains current fan speed in percent (if valid flag exists in iSpeedType)
+    public int iFanSpeedPercent;
+    /// Contains current fan speed in RPM (if valid flag exists in iSpeedType)
+    public int iFanSpeedRPM;
+
+    /// Value for future extension
+    public int iExtValue;
+    /// Mask for future extension
+    public int iExtMask;
+
+  }
+
   internal enum ADLODNCurrentPowerType {
     TOTAL_POWER = 0,
     PPT_POWER,
@@ -465,6 +481,9 @@ namespace OpenHardwareMonitor.Hardware.ATI {
     public delegate ADLStatus ADL2_OverdriveN_FanControl_GetDelegate(
       IntPtr context, int adapterIndex, ref ADLODNFanControl odNFanControl);
 
+    public delegate ADLStatus ADL_Overdrive6_FanSpeed_GetDelegate(
+      int adapterIndex, ref ADLOD6FanSpeedInfo lpFanSpeedInfo);
+
     private static ADL_Main_Control_CreateDelegate
       _ADL_Main_Control_Create;
     private static ADL_Adapter_AdapterInfo_GetDelegate
@@ -516,6 +535,9 @@ namespace OpenHardwareMonitor.Hardware.ATI {
 
     public static ADL2_OverdriveN_FanControl_GetDelegate
       ADL2_OverdriveN_FanControl_Get;
+
+    public static ADL_Overdrive6_FanSpeed_GetDelegate
+      ADL_Overdrive6_FanSpeed_Get;
 
     private static string dllName;
 
@@ -585,6 +607,9 @@ namespace OpenHardwareMonitor.Hardware.ATI {
 
       GetDelegate("ADL2_OverdriveN_FanControl_Get",
         out ADL2_OverdriveN_FanControl_Get);
+
+      GetDelegate("ADL_Overdrive6_FanSpeed_Get",
+        out ADL_Overdrive6_FanSpeed_Get);
     }
 
     static ADL() {
